@@ -15,16 +15,17 @@ function App() {
     zoom: 3.5,
   })
 
+  // Use user coordinates to display position, but don't move map
+  const [userCoordinates, setUserCoordinates] =
+    useState<GeolocationCoordinates | null>(null)
   useEffect(() => {
-    navigator.geolocation.getCurrentPosition((position) =>
-      setViewState({
-        longitude: position.coords.longitude,
-        latitude: position.coords.latitude,
-        zoom: 14,
-      })
+    const watchHandler = navigator.geolocation.watchPosition((position) =>
+      setUserCoordinates(position.coords)
     )
+    return () => navigator.geolocation.clearWatch(watchHandler)
   }, [])
 
+  // Track the current date to reactively update positions
   const [currentDate, setCurrentDate] = useState(new Date())
   useEffect(() => {
     const interval = setInterval(() => setCurrentDate(new Date()), 20)
@@ -48,6 +49,17 @@ function App() {
         projection="globe"
         attributionControl={false}
       >
+        {userCoordinates && (
+          <Marker
+            longitude={userCoordinates.longitude}
+            latitude={userCoordinates.latitude}
+          >
+            <svg width={16} height={16}>
+              <circle cx={8} cy={8} r={8} fill="#ffffff" />
+              <circle cx={8} cy={8} r={6} fill="#0080ff" />
+            </svg>
+          </Marker>
+        )}
         <Marker
           longitude={moved.geometry.coordinates[0]}
           latitude={moved.geometry.coordinates[1]}
