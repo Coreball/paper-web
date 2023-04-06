@@ -11,8 +11,13 @@
     "format:check": "prettier '**/*.{js,ts,tsx,scss,css,html,md}' --check"
   },
   "dependencies": {
+    "@emotion/react": "^11.10.6",
+    "@emotion/styled": "^11.10.6",
+    "@mui/material": "^5.11.16",
+    "mapbox-gl": "^2.13.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-map-gl": "^7.0.21"
   },
   "devDependencies": {
     "@types/react": "^18.0.27",
