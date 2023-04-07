@@ -1,5 +1,16 @@
 import { useEffect, useState } from 'react'
-import { Box } from '@mui/material'
+import {
+  Box,
+  Button,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
+  Slider,
+  Typography,
+} from '@mui/material'
+import { Send } from '@mui/icons-material'
 import { destination, point } from '@turf/turf'
 import { Map, Marker } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -24,6 +35,19 @@ function App() {
     )
     return () => navigator.geolocation.clearWatch(watchHandler)
   }, [])
+
+  const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  const [sendHeading, setSendHeading] = useState(0)
+
+  const openSendPlane = () => {
+    setIsDialogOpen(true)
+    setSendHeading(0)
+  }
+
+  const closeSendPlane = () => {
+    setIsDialogOpen(false)
+  }
 
   // Track the current date to reactively update positions
   const [currentDate, setCurrentDate] = useState(new Date())
@@ -69,6 +93,49 @@ function App() {
           </svg>
         </Marker>
       </Map>
+      <Button
+        variant="contained"
+        disableElevation
+        endIcon={<Send />}
+        sx={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translate(-50%, 0)',
+          bottom: '24px',
+        }}
+        disabled={isDialogOpen}
+        onClick={openSendPlane}
+      >
+        Send Plane
+      </Button>
+      <Dialog open={isDialogOpen} onClose={closeSendPlane}>
+        <DialogTitle>Send Plane</DialogTitle>
+        <DialogContent
+          sx={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: 4,
+          }}
+        >
+          <DialogContentText>Choose an initial plane heading</DialogContentText>
+          <Send
+            fontSize="large"
+            sx={{ transform: `rotate(${sendHeading - 90}deg)` }}
+          />
+          <Typography mb={-2}>{sendHeading}</Typography>
+          <Slider
+            min={-180}
+            max={180}
+            value={sendHeading}
+            onChange={(_, val) => setSendHeading(val as number)}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={closeSendPlane}>Cancel</Button>
+          <Button onClick={closeSendPlane}>Send</Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   )
 }
