@@ -10,9 +10,9 @@ import {
   Slider,
   Typography,
 } from '@mui/material'
-import { Send } from '@mui/icons-material'
-import { destination, point } from '@turf/turf'
-import { Map, Marker } from 'react-map-gl'
+import { Send, SportsHandball, Telegram } from '@mui/icons-material'
+import * as turf from '@turf/turf'
+import { Layer, Map, Marker, Source } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { Plane } from './types'
 
@@ -34,6 +34,10 @@ function App() {
     )
     return () => navigator.geolocation.clearWatch(watchHandler)
   }, [])
+  const userCenter =
+    userCoordinates &&
+    turf.point([userCoordinates.longitude, userCoordinates.latitude])
+  const userRadius = userCenter && turf.circle(userCenter, 100)
 
   // Send plane dialog
   const [isDialogOpen, setIsDialogOpen] = useState(false)
@@ -46,11 +50,11 @@ function App() {
     setIsDialogOpen(false)
   }
   const sendPlane = () => {
-    if (userCoordinates !== null) {
+    if (userCenter) {
       setPlanes([
         ...planes,
         {
-          origin: point([userCoordinates.longitude, userCoordinates.latitude]),
+          origin: userCenter,
           heading: sendHeading,
           timestamp: Date.now(),
         },
@@ -79,19 +83,34 @@ function App() {
         projection="globe"
         attributionControl={false}
       >
+        {userRadius && (
+          <Source id="user-radius" type="geojson" data={userRadius}>
+            <Layer
+              id="user-radius"
+              type="line"
+              paint={{
+                'line-color': '#ffffff',
+                'line-width': 2,
+                'line-dasharray': [2, 1],
+              }}
+            />
+          </Source>
+        )}
         {userCoordinates && (
           <Marker
             longitude={userCoordinates.longitude}
             latitude={userCoordinates.latitude}
           >
-            <svg width={16} height={16}>
-              <circle cx={8} cy={8} r={8} fill="#ffffff" />
-              <circle cx={8} cy={8} r={6} fill="#0080ff" />
-            </svg>
+            <Box height={16} width={16}>
+              <svg width={16} height={16}>
+                <circle cx={8} cy={8} r={8} fill="#ffffff" />
+                <circle cx={8} cy={8} r={6} fill="#0080ff" />
+              </svg>
+            </Box>
           </Marker>
         )}
         {planes.map((plane) => {
-          const position = destination(
+          const position = turf.destination(
             plane.origin,
             currentDate - plane.timestamp,
             plane.heading
@@ -108,21 +127,34 @@ function App() {
           )
         })}
       </Map>
-      <Button
-        variant="contained"
-        disableElevation
-        endIcon={<Send />}
+      <Box
         sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
           position: 'absolute',
           left: '50%',
           transform: 'translate(-50%, 0)',
           bottom: '24px',
         }}
-        disabled={isDialogOpen}
-        onClick={openSendPlane}
       >
-        Send Plane
-      </Button>
+        <Button
+          variant="contained"
+          disableElevation
+          endIcon={<SportsHandball />}
+        >
+          Catch Plane
+        </Button>
+        <Button
+          variant="contained"
+          disableElevation
+          endIcon={<Telegram />}
+          disabled={isDialogOpen}
+          onClick={openSendPlane}
+        >
+          Send Plane
+        </Button>
+      </Box>
       <Dialog open={isDialogOpen} onClose={closeSendPlane}>
         <DialogTitle>Send Plane</DialogTitle>
         <DialogContent
