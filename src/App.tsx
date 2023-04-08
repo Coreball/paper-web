@@ -17,8 +17,13 @@ import 'mapbox-gl/dist/mapbox-gl.css'
 import { Plane } from './types'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+const NEARBY_RADIUS_KM = 100
+const PLANE_SPEED_KMS = 100
 
 function App() {
+  const [planes, setPlanes] = useState<Plane[]>([])
+
+  // Map view state
   const [viewState, setViewState] = useState({
     longitude: -100,
     latitude: 40,
@@ -37,17 +42,17 @@ function App() {
   const userCenter =
     userCoordinates &&
     turf.point([userCoordinates.longitude, userCoordinates.latitude])
-  const userRadius = userCenter && turf.circle(userCenter, 100)
+  const userRadius = userCenter && turf.circle(userCenter, NEARBY_RADIUS_KM)
 
   // Send plane dialog
-  const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sendHeading, setSendHeading] = useState(0)
   const openSendPlane = () => {
-    setIsDialogOpen(true)
+    setSendDialogOpen(true)
     setSendHeading(0)
   }
   const closeSendPlane = () => {
-    setIsDialogOpen(false)
+    setSendDialogOpen(false)
   }
   const sendPlane = () => {
     if (userCenter) {
@@ -71,7 +76,20 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const [planes, setPlanes] = useState<Plane[]>([])
+  const planePositions = planes.map((plane) =>
+    turf.destination(
+      plane.origin,
+      ((currentDate - plane.timestamp) / 1000) * PLANE_SPEED_KMS,
+      plane.heading
+    )
+  )
+
+  const nearbyPlanes = userCenter
+    ? planes.filter(
+        (_, i) =>
+          turf.distance(userCenter, planePositions[i]) <= NEARBY_RADIUS_KM
+      )
+    : []
 
   return (
     <Box sx={{ display: 'flex', height: window.innerHeight }}>
@@ -109,23 +127,16 @@ function App() {
             </Box>
           </Marker>
         )}
-        {planes.map((plane) => {
-          const position = turf.destination(
-            plane.origin,
-            currentDate - plane.timestamp,
-            plane.heading
-          )
-          return (
-            <Marker
-              longitude={position.geometry.coordinates[0]}
-              latitude={position.geometry.coordinates[1]}
-            >
-              <svg width={10} height={10}>
-                <circle cx="5" cy="5" r="5" fill="red" />
-              </svg>
-            </Marker>
-          )
-        })}
+        {planePositions.map((position) => (
+          <Marker
+            longitude={position.geometry.coordinates[0]}
+            latitude={position.geometry.coordinates[1]}
+          >
+            <svg width={10} height={10}>
+              <circle cx="5" cy="5" r="5" fill="red" />
+            </svg>
+          </Marker>
+        ))}
       </Map>
       <Box
         sx={{
@@ -142,20 +153,21 @@ function App() {
           variant="contained"
           disableElevation
           endIcon={<SportsHandball />}
+          disabled={sendDialogOpen || nearbyPlanes.length < 1}
         >
-          Catch Plane
+          Catch Plane ({nearbyPlanes.length})
         </Button>
         <Button
           variant="contained"
           disableElevation
           endIcon={<Telegram />}
-          disabled={isDialogOpen}
+          disabled={sendDialogOpen}
           onClick={openSendPlane}
         >
           Send Plane
         </Button>
       </Box>
-      <Dialog open={isDialogOpen} onClose={closeSendPlane}>
+      <Dialog open={sendDialogOpen} onClose={closeSendPlane}>
         <DialogTitle>Send Plane</DialogTitle>
         <DialogContent
           sx={{
