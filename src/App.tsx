@@ -1,19 +1,10 @@
 import { useEffect, useState } from 'react'
-import {
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogContentText,
-  DialogTitle,
-  Slider,
-  Typography,
-} from '@mui/material'
-import { Send, SportsHandball, Telegram } from '@mui/icons-material'
+import { Box, Button } from '@mui/material'
+import { SportsHandball, Telegram } from '@mui/icons-material'
 import * as turf from '@turf/turf'
 import { Layer, Map, Marker, Source } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { EditSendDialog } from './EditSendDialog'
 import { Plane } from './types'
 
 const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
@@ -22,6 +13,8 @@ const PLANE_SPEED_KMS = 100
 
 function App() {
   const [planes, setPlanes] = useState<Plane[]>([])
+  const [currentPlane, setCurrentPlane] = useState<Plane | null>(null)
+  const [creatingNewPlane, setCreatingNewPlane] = useState(false)
 
   // Map view state
   const [viewState, setViewState] = useState({
@@ -44,31 +37,6 @@ function App() {
     turf.point([userCoordinates.longitude, userCoordinates.latitude])
   const userRadius = userCenter && turf.circle(userCenter, NEARBY_RADIUS_KM)
 
-  // Send plane dialog
-  const [sendDialogOpen, setSendDialogOpen] = useState(false)
-  const [sendHeading, setSendHeading] = useState(0)
-  const openSendPlane = () => {
-    setSendDialogOpen(true)
-    setSendHeading(0)
-  }
-  const closeSendPlane = () => {
-    setSendDialogOpen(false)
-  }
-  const sendPlane = () => {
-    if (userCenter) {
-      setPlanes([
-        ...planes,
-        {
-          origin: userCenter,
-          heading: sendHeading,
-          timestamp: Date.now(),
-        },
-      ])
-    }
-    closeSendPlane()
-  }
-  const canSendPlane = userCoordinates !== null
-
   // Track the current date to reactively update positions
   const [currentDate, setCurrentDate] = useState(Date.now())
   useEffect(() => {
@@ -90,6 +58,25 @@ function App() {
           turf.distance(userCenter, planePositions[i]) <= NEARBY_RADIUS_KM
       )
     : []
+
+  const handleCreateNewPlane = () => {
+    setCurrentPlane(null)
+    setCreatingNewPlane(true)
+  }
+
+  const handleCancelPlane = () => {
+    if (currentPlane) {
+      setPlanes([...planes, currentPlane]) // Add plane back unchanged
+    }
+    setCurrentPlane(null)
+    setCreatingNewPlane(false)
+  }
+
+  const handleAddPlane = (plane: Plane) => {
+    setPlanes([...planes, plane])
+    setCurrentPlane(null)
+    setCreatingNewPlane(false)
+  }
 
   return (
     <Box sx={{ display: 'flex', height: window.innerHeight }}>
@@ -153,7 +140,9 @@ function App() {
           variant="contained"
           disableElevation
           endIcon={<SportsHandball />}
-          disabled={sendDialogOpen || nearbyPlanes.length < 1}
+          disabled={
+            currentPlane !== null || creatingNewPlane || nearbyPlanes.length < 1
+          }
         >
           Catch Plane ({nearbyPlanes.length})
         </Button>
@@ -161,50 +150,19 @@ function App() {
           variant="contained"
           disableElevation
           endIcon={<Telegram />}
-          disabled={sendDialogOpen}
-          onClick={openSendPlane}
+          disabled={currentPlane !== null || creatingNewPlane}
+          onClick={handleCreateNewPlane}
         >
           Send Plane
         </Button>
       </Box>
-      <Dialog open={sendDialogOpen} onClose={closeSendPlane}>
-        <DialogTitle>Send Plane</DialogTitle>
-        <DialogContent
-          sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            gap: 4,
-          }}
-        >
-          {canSendPlane ? (
-            <>
-              <DialogContentText>
-                Choose an initial plane heading
-              </DialogContentText>
-              <Send
-                fontSize="large"
-                sx={{ transform: `rotate(${sendHeading - 90}deg)` }}
-              />
-              <Typography mb={-2}>{sendHeading}</Typography>
-              <Slider
-                min={-180}
-                max={180}
-                value={sendHeading}
-                onChange={(_, val) => setSendHeading(val as number)}
-              />
-            </>
-          ) : (
-            <DialogContentText>Need your location :(</DialogContentText>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={closeSendPlane}>Cancel</Button>
-          <Button disabled={!canSendPlane} onClick={sendPlane}>
-            Send
-          </Button>
-        </DialogActions>
-      </Dialog>
+      <EditSendDialog
+        currentPlane={currentPlane}
+        creatingNewPlane={creatingNewPlane}
+        userCenter={userCenter}
+        handleCancelPlane={handleCancelPlane}
+        handleAddPlane={handleAddPlane}
+      />
     </Box>
   )
 }
