@@ -44,13 +44,14 @@ function App() {
     return () => clearInterval(interval)
   }, [])
 
-  const planePositions = planes.map((plane) =>
-    turf.destination(
-      plane.origin,
-      ((currentDate - plane.timestamp) / 1000) * PLANE_SPEED_KMS,
-      plane.heading
+  const planePositions = planes.map((plane) => {
+    const mostRecentLaunch = plane.launches[plane.launches.length - 1]
+    return turf.destination(
+      mostRecentLaunch.origin,
+      ((currentDate - mostRecentLaunch.timestamp) / 1000) * PLANE_SPEED_KMS,
+      mostRecentLaunch.heading
     )
-  )
+  })
 
   const nearbyPlanes = userCenter
     ? planes.filter(
@@ -58,6 +59,15 @@ function App() {
           turf.distance(userCenter, planePositions[i]) <= NEARBY_RADIUS_KM
       )
     : []
+
+  const handleCatchPlane = () => {
+    const randomNearbyPlane =
+      nearbyPlanes[Math.floor(Math.random() * nearbyPlanes.length)]
+    console.log('Catch Plane', randomNearbyPlane)
+    setPlanes(planes.filter((plane) => plane !== randomNearbyPlane))
+    setCurrentPlane(randomNearbyPlane)
+    setCreatingNewPlane(false)
+  }
 
   const handleCreateNewPlane = () => {
     setCurrentPlane(null)
@@ -73,6 +83,7 @@ function App() {
   }
 
   const handleAddPlane = (plane: Plane) => {
+    console.log('Add Plane', plane)
     setPlanes([...planes, plane])
     setCurrentPlane(null)
     setCreatingNewPlane(false)
@@ -143,6 +154,7 @@ function App() {
           disabled={
             currentPlane !== null || creatingNewPlane || nearbyPlanes.length < 1
           }
+          onClick={handleCatchPlane}
         >
           Catch Plane ({nearbyPlanes.length})
         </Button>

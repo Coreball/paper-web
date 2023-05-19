@@ -11,7 +11,7 @@ import {
 } from '@mui/material'
 import { Send } from '@mui/icons-material'
 import { Feature, Point } from '@turf/turf'
-import { Plane } from './types'
+import { Launch, Plane } from './types'
 
 export const EditSendDialog = ({
   currentPlane,
@@ -28,11 +28,21 @@ export const EditSendDialog = ({
   const [sendHeading, setSendHeading] = useState(0)
   const sendPlane = () => {
     if (canSendPlane) {
-      handleAddPlane({
-        origin: userCenter,
+      const launch: Launch = {
+        origin: userCenter.geometry.coordinates,
         heading: sendHeading,
         timestamp: Date.now(),
-      })
+      }
+      if (currentPlane) {
+        handleAddPlane({
+          ...currentPlane,
+          launches: [...currentPlane.launches, launch],
+        })
+      } else {
+        handleAddPlane({
+          launches: [launch],
+        })
+      }
     }
   }
   const canSendPlane = userCenter !== null
