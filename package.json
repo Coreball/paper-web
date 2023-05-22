@@ -11,11 +11,13 @@
     "format:check": "prettier '**/*.{js,ts,tsx,scss,css,html,md}' --check"
   },
   "dependencies": {
+    "@aws-amplify/ui-react": "^4.6.2",
     "@emotion/react": "^11.10.6",
     "@emotion/styled": "^11.10.6",
     "@mui/icons-material": "^5.11.16",
     "@mui/material": "^5.11.16",
     "@turf/turf": "^6.5.0",
+    "aws-amplify": "^5.2.2",
     "mapbox-gl": "^2.13.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",

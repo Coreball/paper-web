@@ -14,6 +14,7 @@ import { Feature, Point } from '@turf/turf'
 import { Stamp } from './Stamp'
 import { BASE_URL, MAPBOX_TOKEN } from './constants'
 import { Launch, Plane } from './types'
+import { Auth } from 'aws-amplify'
 
 export const EditSendDialog = ({
   currentPlane,
@@ -60,34 +61,46 @@ export const EditSendDialog = ({
         },
       }
       if (currentPlane) {
-        fetch(BASE_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: currentPlane.id, ...launch }),
-        })
-          .then(() => {
-            handleAddPlane({
-              ...currentPlane,
-              launches: [...currentPlane.launches, launch],
-            })
-            setSendInProgress(false)
+        Auth.currentSession().then((session) =>
+          fetch(BASE_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + session.getIdToken().getJwtToken(),
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify({ id: currentPlane.id, ...launch }),
           })
-          .catch((err) => console.error(err))
+            .then(() => {
+              handleAddPlane({
+                ...currentPlane,
+                launches: [...currentPlane.launches, launch],
+              })
+              setSendInProgress(false)
+            })
+            .catch((err) => console.error(err))
+        )
       } else {
-        fetch(BASE_URL, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(launch),
-        })
-          .then((res) => res.json())
-          .then((data) => {
-            handleAddPlane({
-              id: data.id,
-              launches: [launch],
-            })
-            setSendInProgress(false)
+        Auth.currentSession().then((session) =>
+          fetch(BASE_URL, {
+            method: 'POST',
+            headers: {
+              Authorization: 'Bearer ' + session.getIdToken().getJwtToken(),
+              'Content-Type': 'application/json',
+            },
+            credentials: 'include',
+            body: JSON.stringify(launch),
           })
-          .catch((err) => console.error(err))
+            .then((res) => res.json())
+            .then((data) => {
+              handleAddPlane({
+                id: data.id,
+                launches: [launch],
+              })
+              setSendInProgress(false)
+            })
+            .catch((err) => console.error(err))
+        )
       }
     }
   }

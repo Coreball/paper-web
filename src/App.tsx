@@ -4,14 +4,23 @@ import { Send, SportsHandball, Telegram } from '@mui/icons-material'
 import * as turf from '@turf/turf'
 import { Layer, Map, Marker, Source } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
+import { Amplify } from 'aws-amplify'
+import { useAuthenticator } from '@aws-amplify/ui-react'
+import '@aws-amplify/ui-react/styles.css'
 import { EditSendDialog } from './EditSendDialog'
-import { BASE_URL, MAPBOX_TOKEN } from './constants'
+import { AWS_EXPORTS, BASE_URL, MAPBOX_TOKEN } from './constants'
 import { Plane } from './types'
+import { LoginDialog } from './LoginDialog'
 
 const NEARBY_RADIUS_KM = 100
 const PLANE_SPEED_KMS = 1
 
+Amplify.configure({ Auth: AWS_EXPORTS })
+
 function App() {
+  const { user, signOut } = useAuthenticator((context) => [context.user])
+  const [loginOpen, setLoginOpen] = useState(false)
+
   const [planes, setPlanes] = useState<Plane[]>([])
   const [currentPlane, setCurrentPlane] = useState<Plane | null>(null)
   const [creatingNewPlane, setCreatingNewPlane] = useState(false)
@@ -178,6 +187,31 @@ function App() {
           position: 'absolute',
           left: '50%',
           transform: 'translate(-50%, 0)',
+          top: '24px',
+        }}
+      >
+        {user ? (
+          <Button variant="contained" disableElevation onClick={signOut}>
+            Log Out
+          </Button>
+        ) : (
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={() => setLoginOpen(true)}
+          >
+            Log In
+          </Button>
+        )}
+      </Box>
+      <Box
+        sx={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 1,
+          position: 'absolute',
+          left: '50%',
+          transform: 'translate(-50%, 0)',
           bottom: '24px',
         }}
       >
@@ -208,6 +242,12 @@ function App() {
         userCenter={userCenter}
         handleCancelPlane={handleCancelPlane}
         handleAddPlane={handleAddPlane}
+      />
+      <LoginDialog
+        active={loginOpen}
+        handleClose={() => {
+          setLoginOpen(false)
+        }}
       />
     </Box>
   )
