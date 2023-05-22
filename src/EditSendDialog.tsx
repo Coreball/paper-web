@@ -137,7 +137,7 @@ export const EditSendDialog = ({
               onClick={handleStamp}
               width={400}
               viewBox="0 0 850 1100"
-              style={{ border: '2px solid lightgray' }}
+              style={{ border: '2px solid lightgray', maxWidth: '100%' }}
             >
               {currentPlane?.launches.map((launch, i) => (
                 <Stamp
