@@ -14,6 +14,8 @@ import { Feature, Point } from '@turf/turf'
 import { Stamp } from './Stamp'
 import { Launch, Plane } from './types'
 
+const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
+
 export const EditSendDialog = ({
   currentPlane,
   creatingNewPlane,
@@ -27,6 +29,7 @@ export const EditSendDialog = ({
     null
   )
   const [stampAngle, setStampAngle] = useState(0)
+  const [stampText, setStampText] = useState('Unknown Location')
   const [stampVariant, setStampVariant] = useState(0)
   const handleStamp = (e: React.MouseEvent<SVGSVGElement>) => {
     const point = new DOMPoint(e.clientX, e.clientY)
@@ -51,7 +54,7 @@ export const EditSendDialog = ({
           x: stampCoords[0],
           y: stampCoords[1],
           angle: stampAngle,
-          text: 'Test text',
+          text: stampText,
           variant: stampVariant,
         },
       }
@@ -72,10 +75,29 @@ export const EditSendDialog = ({
   // useEffect to reset the dialog whenever changes to active
   useEffect(() => {
     if (active) {
+      setStampCoords(null) // Hide stamp until user touches somewhere
       setEditDialogOpen(true)
       setSendDialogOpen(false)
+      if (stampText === 'Unknown Location' && userCenter) {
+        const longitude = userCenter.geometry.coordinates[0]
+        const latitude = userCenter.geometry.coordinates[1]
+        const params = new URLSearchParams({
+          types: 'region,place',
+          access_token: MAPBOX_TOKEN,
+        })
+        fetch(
+          `https://api.mapbox.com/geocoding/v5/mapbox.places/${longitude},${latitude}.json?` +
+            params
+        )
+          .then((res) => res.json())
+          .then((data) =>
+            setStampText(
+              data.features[0]?.place_name ?? `${latitude}, ${longitude}`
+            )
+          )
+      }
     }
-  }, [active])
+  }, [active, stampText])
 
   const handleNext = () => {
     setEditDialogOpen(false)
@@ -110,7 +132,7 @@ export const EditSendDialog = ({
                   x={stampCoords[0]}
                   y={stampCoords[1]}
                   angle={stampAngle}
-                  text="hi"
+                  text={stampText}
                   variant={stampVariant}
                 />
               )}
@@ -118,7 +140,9 @@ export const EditSendDialog = ({
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCancelPlane}>Cancel</Button>
-            <Button onClick={handleNext}>Next</Button>
+            <Button disabled={stampCoords === null} onClick={handleNext}>
+              Next
+            </Button>
           </DialogActions>
         </>
       )}
