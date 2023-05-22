@@ -11,6 +11,7 @@ import {
 } from '@mui/material'
 import { Send } from '@mui/icons-material'
 import { Feature, Point } from '@turf/turf'
+import { Stamp } from './Stamp'
 import { Launch, Plane } from './types'
 
 export const EditSendDialog = ({
@@ -22,16 +23,37 @@ export const EditSendDialog = ({
 }: EditSendDialogProps) => {
   // Edit plane dialog, open initially
   const [editDialogOpen, setEditDialogOpen] = useState(true)
+  const [stampCoords, setStampCoords] = useState<[x: number, y: number] | null>(
+    null
+  )
+  const [stampAngle, setStampAngle] = useState(0)
+  const [stampVariant, setStampVariant] = useState(0)
+  const handleStamp = (e: React.MouseEvent<SVGSVGElement>) => {
+    const point = new DOMPoint(e.clientX, e.clientY)
+    const matrix = e.currentTarget.getScreenCTM()?.inverse()
+    const position = point.matrixTransform(matrix)
+    setStampCoords([position.x, position.y])
+    setStampAngle(Math.random() * 180 - 90)
+    setStampVariant(Math.floor(Math.random() * 2))
+  }
 
   // Send plane dialog
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sendHeading, setSendHeading] = useState(0)
+  const canSendPlane = userCenter !== null && stampCoords !== null
   const sendPlane = () => {
     if (canSendPlane) {
       const launch: Launch = {
         origin: userCenter.geometry.coordinates,
         heading: sendHeading,
         timestamp: Date.now(),
+        stamp: {
+          x: stampCoords[0],
+          y: stampCoords[1],
+          angle: stampAngle,
+          text: 'Test text',
+          variant: stampVariant,
+        },
       }
       if (currentPlane) {
         handleAddPlane({
@@ -45,7 +67,6 @@ export const EditSendDialog = ({
       }
     }
   }
-  const canSendPlane = userCenter !== null
 
   const active = currentPlane !== null || creatingNewPlane
   // useEffect to reset the dialog whenever changes to active
@@ -68,7 +89,32 @@ export const EditSendDialog = ({
         <>
           <DialogTitle>Edit Plane</DialogTitle>
           <DialogContent>
-            <DialogContentText>TODO edit plane interface</DialogContentText>
+            <DialogContentText mb={2}>Tap to stamp the page</DialogContentText>
+            <svg
+              onClick={handleStamp}
+              width={400}
+              viewBox="0 0 850 1100"
+              style={{ border: '2px solid lightgray' }}
+            >
+              {currentPlane?.launches.map((launch) => (
+                <Stamp
+                  x={launch.stamp.x}
+                  y={launch.stamp.y}
+                  angle={launch.stamp.angle}
+                  text={launch.stamp.text}
+                  variant={launch.stamp.variant}
+                />
+              ))}
+              {stampCoords && (
+                <Stamp
+                  x={stampCoords[0]}
+                  y={stampCoords[1]}
+                  angle={stampAngle}
+                  text="hi"
+                  variant={stampVariant}
+                />
+              )}
+            </svg>
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCancelPlane}>Cancel</Button>
