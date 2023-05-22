@@ -1,6 +1,7 @@
 import { Position } from '@turf/turf'
 
 export type Plane = {
+  id: string
   launches: Launch[]
 }
 

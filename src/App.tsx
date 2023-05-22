@@ -5,16 +5,34 @@ import * as turf from '@turf/turf'
 import { Layer, Map, Marker, Source } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
 import { EditSendDialog } from './EditSendDialog'
+import { BASE_URL, MAPBOX_TOKEN } from './constants'
 import { Plane } from './types'
 
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 const NEARBY_RADIUS_KM = 100
-const PLANE_SPEED_KMS = 100
+const PLANE_SPEED_KMS = 1
 
 function App() {
   const [planes, setPlanes] = useState<Plane[]>([])
   const [currentPlane, setCurrentPlane] = useState<Plane | null>(null)
   const [creatingNewPlane, setCreatingNewPlane] = useState(false)
+
+  // Load planes from API, polling periodically
+  useEffect(() => {
+    const interval = setInterval(
+      () =>
+        fetch(BASE_URL)
+          .then((res) => res.json())
+          .then((data) =>
+            // Wait to update current plane until it's released
+            setPlanes(
+              data.filter((plane: Plane) => plane.id !== currentPlane?.id)
+            )
+          )
+          .catch((err) => console.error(err)),
+      5000
+    )
+    return () => clearInterval(interval)
+  }, [currentPlane])
 
   // Map view state
   const [viewState, setViewState] = useState({
@@ -133,10 +151,11 @@ function App() {
             </Box>
           </Marker>
         )}
-        {planePositions.map((plane) => (
+        {planes.map((plane, i) => (
           <Marker
-            longitude={plane.position.geometry.coordinates[0]}
-            latitude={plane.position.geometry.coordinates[1]}
+            key={plane.id}
+            longitude={planePositions[i].position.geometry.coordinates[0]}
+            latitude={planePositions[i].position.geometry.coordinates[1]}
             rotationAlignment="map"
             style={{ filter: 'drop-shadow(0px 5px 2px rgb(0 0 0 / 0.4))' }}
           >
@@ -145,7 +164,7 @@ function App() {
               // Using the sx prop here significantly hurts performance
               style={{
                 color: 'white',
-                transform: `rotate(${plane.heading - 90}deg)`,
+                transform: `rotate(${planePositions[i].heading - 90}deg)`,
               }}
             />
           </Marker>

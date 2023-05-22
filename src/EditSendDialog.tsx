@@ -12,9 +12,8 @@ import {
 import { Send } from '@mui/icons-material'
 import { Feature, Point } from '@turf/turf'
 import { Stamp } from './Stamp'
+import { BASE_URL, MAPBOX_TOKEN } from './constants'
 import { Launch, Plane } from './types'
-
-const MAPBOX_TOKEN = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN
 
 export const EditSendDialog = ({
   currentPlane,
@@ -43,9 +42,11 @@ export const EditSendDialog = ({
   // Send plane dialog
   const [sendDialogOpen, setSendDialogOpen] = useState(false)
   const [sendHeading, setSendHeading] = useState(0)
+  const [sendInProgress, setSendInProgress] = useState(false)
   const canSendPlane = userCenter !== null && stampCoords !== null
   const sendPlane = () => {
     if (canSendPlane) {
+      setSendInProgress(true)
       const launch: Launch = {
         origin: userCenter.geometry.coordinates,
         heading: sendHeading,
@@ -59,14 +60,34 @@ export const EditSendDialog = ({
         },
       }
       if (currentPlane) {
-        handleAddPlane({
-          ...currentPlane,
-          launches: [...currentPlane.launches, launch],
+        fetch(BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: currentPlane.id, ...launch }),
         })
+          .then(() => {
+            handleAddPlane({
+              ...currentPlane,
+              launches: [...currentPlane.launches, launch],
+            })
+            setSendInProgress(false)
+          })
+          .catch((err) => console.error(err))
       } else {
-        handleAddPlane({
-          launches: [launch],
+        fetch(BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(launch),
         })
+          .then((res) => res.json())
+          .then((data) => {
+            handleAddPlane({
+              id: data.id,
+              launches: [launch],
+            })
+            setSendInProgress(false)
+          })
+          .catch((err) => console.error(err))
       }
     }
   }
@@ -118,8 +139,9 @@ export const EditSendDialog = ({
               viewBox="0 0 850 1100"
               style={{ border: '2px solid lightgray' }}
             >
-              {currentPlane?.launches.map((launch) => (
+              {currentPlane?.launches.map((launch, i) => (
                 <Stamp
+                  key={i}
                   x={launch.stamp.x}
                   y={launch.stamp.y}
                   angle={launch.stamp.angle}
@@ -180,7 +202,10 @@ export const EditSendDialog = ({
           </DialogContent>
           <DialogActions>
             <Button onClick={handleCancelPlane}>Cancel</Button>
-            <Button disabled={!canSendPlane} onClick={sendPlane}>
+            <Button
+              disabled={!canSendPlane || sendInProgress}
+              onClick={sendPlane}
+            >
               Send
             </Button>
           </DialogActions>
