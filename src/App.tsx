@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Box, Button } from '@mui/material'
-import { SportsHandball, Telegram } from '@mui/icons-material'
+import { Send, SportsHandball, Telegram } from '@mui/icons-material'
 import * as turf from '@turf/turf'
 import { Layer, Map, Marker, Source } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
@@ -46,17 +46,25 @@ function App() {
 
   const planePositions = planes.map((plane) => {
     const mostRecentLaunch = plane.launches[plane.launches.length - 1]
-    return turf.destination(
+    const position = turf.destination(
       mostRecentLaunch.origin,
       ((currentDate - mostRecentLaunch.timestamp) / 1000) * PLANE_SPEED_KMS,
       mostRecentLaunch.heading
     )
+    const nextPosition = turf.destination(
+      mostRecentLaunch.origin,
+      ((currentDate + 1 - mostRecentLaunch.timestamp) / 1000) * PLANE_SPEED_KMS,
+      mostRecentLaunch.heading
+    )
+    const heading = turf.bearing(position, nextPosition)
+    return { position, heading }
   })
 
   const nearbyPlanes = userCenter
     ? planes.filter(
         (_, i) =>
-          turf.distance(userCenter, planePositions[i]) <= NEARBY_RADIUS_KM
+          turf.distance(userCenter, planePositions[i].position) <=
+          NEARBY_RADIUS_KM
       )
     : []
 
@@ -125,14 +133,21 @@ function App() {
             </Box>
           </Marker>
         )}
-        {planePositions.map((position) => (
+        {planePositions.map((plane) => (
           <Marker
-            longitude={position.geometry.coordinates[0]}
-            latitude={position.geometry.coordinates[1]}
+            longitude={plane.position.geometry.coordinates[0]}
+            latitude={plane.position.geometry.coordinates[1]}
+            rotationAlignment="map"
+            style={{ filter: 'drop-shadow(0px 5px 2px rgb(0 0 0 / 0.4))' }}
           >
-            <svg width={10} height={10}>
-              <circle cx="5" cy="5" r="5" fill="red" />
-            </svg>
+            <Send
+              fontSize="small"
+              // Using the sx prop here significantly hurts performance
+              style={{
+                color: 'white',
+                transform: `rotate(${plane.heading - 90}deg)`,
+              }}
+            />
           </Marker>
         ))}
       </Map>
