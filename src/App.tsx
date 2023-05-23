@@ -4,9 +4,8 @@ import { Send, SportsHandball, Telegram } from '@mui/icons-material'
 import * as turf from '@turf/turf'
 import { Layer, Map, Marker, Source } from 'react-map-gl'
 import 'mapbox-gl/dist/mapbox-gl.css'
-import { Amplify } from 'aws-amplify'
-import { useAuthenticator } from '@aws-amplify/ui-react'
-import '@aws-amplify/ui-react/styles.css'
+import { Amplify, Auth, Hub } from 'aws-amplify'
+import { CognitoUser } from 'amazon-cognito-identity-js'
 import { EditSendDialog } from './EditSendDialog'
 import { AWS_EXPORTS, BASE_URL, MAPBOX_TOKEN } from './constants'
 import { Plane } from './types'
@@ -18,8 +17,34 @@ const PLANE_SPEED_KMS = 1
 Amplify.configure({ Auth: AWS_EXPORTS })
 
 function App() {
-  const { user, signOut } = useAuthenticator((context) => [context.user])
+  const [user, setUser] = useState<CognitoUser | null>(null)
   const [loginOpen, setLoginOpen] = useState(false)
+  // Set up listener to update user state for authentication state changes
+  useEffect(() => {
+    const listener = Hub.listen('auth', ({ payload: { event, data } }) => {
+      console.log(event, 'auth event')
+      switch (event) {
+        case 'signIn':
+          getUser().then((userData) => setUser(userData))
+          break
+        case 'signOut':
+          setUser(null)
+          break
+      }
+    })
+    getUser().then((userData) => setUser(userData))
+    return listener
+  }, [])
+  const getUser = () =>
+    Auth.currentAuthenticatedUser()
+      .then((userData) => {
+        console.log(userData)
+        return userData as CognitoUser
+      })
+      .catch(() => {
+        console.log('Not signed in')
+        return null
+      })
 
   const [planes, setPlanes] = useState<Plane[]>([])
   const [currentPlane, setCurrentPlane] = useState<Plane | null>(null)
@@ -191,7 +216,11 @@ function App() {
         }}
       >
         {user ? (
-          <Button variant="contained" disableElevation onClick={signOut}>
+          <Button
+            variant="contained"
+            disableElevation
+            onClick={() => Auth.signOut()}
+          >
             Log Out
           </Button>
         ) : (
