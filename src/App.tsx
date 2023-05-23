@@ -47,8 +47,9 @@ function App() {
       })
 
   const [planes, setPlanes] = useState<Plane[]>([])
-  const [currentPlane, setCurrentPlane] = useState<Plane | null>(null)
+  const [caughtPlane, setCaughtPlane] = useState<Plane | null>(null)
   const [creatingNewPlane, setCreatingNewPlane] = useState(false)
+  const [highlightPlane, setHighlightPlane] = useState<Plane | null>(null)
 
   // Load planes from API, polling periodically
   useEffect(() => {
@@ -59,14 +60,14 @@ function App() {
           .then((data) =>
             // Wait to update current plane until it's released
             setPlanes(
-              data.filter((plane: Plane) => plane.id !== currentPlane?.id)
+              data.filter((plane: Plane) => plane.id !== caughtPlane?.id)
             )
           )
           .catch((err) => console.error(err)),
       5000
     )
     return () => clearInterval(interval)
-  }, [currentPlane])
+  }, [caughtPlane])
 
   // Map view state
   const [viewState, setViewState] = useState({
@@ -109,8 +110,18 @@ function App() {
       mostRecentLaunch.heading
     )
     const heading = turf.bearing(position, nextPosition)
-    return { position, heading }
+    return { id: plane.id, position, heading }
   })
+
+  // Highlight path for user-owned highlighted plane
+  const highlightPath =
+    highlightPlane &&
+    turf.lineString([
+      ...highlightPlane.launches.map((launch) => launch.origin),
+      ...planePositions
+        .filter((plane) => plane.id === highlightPlane.id)
+        .map((plane) => plane.position.geometry.coordinates),
+    ])
 
   const nearbyPlanes = userCenter
     ? planes.filter(
@@ -125,27 +136,27 @@ function App() {
       nearbyPlanes[Math.floor(Math.random() * nearbyPlanes.length)]
     console.log('Catch Plane', randomNearbyPlane)
     setPlanes(planes.filter((plane) => plane !== randomNearbyPlane))
-    setCurrentPlane(randomNearbyPlane)
+    setCaughtPlane(randomNearbyPlane)
     setCreatingNewPlane(false)
   }
 
   const handleCreateNewPlane = () => {
-    setCurrentPlane(null)
+    setCaughtPlane(null)
     setCreatingNewPlane(true)
   }
 
   const handleCancelPlane = () => {
-    if (currentPlane) {
-      setPlanes([...planes, currentPlane]) // Add plane back unchanged
+    if (caughtPlane) {
+      setPlanes([...planes, caughtPlane]) // Add plane back unchanged
     }
-    setCurrentPlane(null)
+    setCaughtPlane(null)
     setCreatingNewPlane(false)
   }
 
   const handleAddPlane = (plane: Plane) => {
     console.log('Add Plane', plane)
     setPlanes([...planes, plane])
-    setCurrentPlane(null)
+    setCaughtPlane(null)
     setCreatingNewPlane(false)
   }
 
@@ -158,7 +169,17 @@ function App() {
         mapboxAccessToken={MAPBOX_TOKEN}
         projection="globe"
         attributionControl={false}
+        onClick={() => setHighlightPlane(null)}
       >
+        {highlightPath && (
+          <Source id="highlight-path" type="geojson" data={highlightPath}>
+            <Layer
+              id="highlight-path"
+              type="line"
+              paint={{ 'line-color': 'orange', 'line-width': 2 }}
+            />
+          </Source>
+        )}
         {userRadius && (
           <Source id="user-radius" type="geojson" data={userRadius}>
             <Layer
@@ -197,9 +218,20 @@ function App() {
               fontSize="small"
               // Using the sx prop here significantly hurts performance
               style={{
-                color: 'white',
+                color:
+                  plane.owner && plane.owner === user?.getUsername()
+                    ? 'gold'
+                    : 'white',
                 transform: `rotate(${planePositions[i].heading - 90}deg)`,
               }}
+              onClick={
+                plane.owner && plane.owner === user?.getUsername()
+                  ? (e) => {
+                      setHighlightPlane(plane)
+                      e.stopPropagation()
+                    }
+                  : undefined
+              }
             />
           </Marker>
         ))}
@@ -219,7 +251,10 @@ function App() {
           <Button
             variant="contained"
             disableElevation
-            onClick={() => Auth.signOut()}
+            onClick={() => {
+              Auth.signOut()
+              setHighlightPlane(null)
+            }}
           >
             Log Out
           </Button>
@@ -249,7 +284,7 @@ function App() {
           disableElevation
           endIcon={<SportsHandball />}
           disabled={
-            currentPlane !== null || creatingNewPlane || nearbyPlanes.length < 1
+            caughtPlane !== null || creatingNewPlane || nearbyPlanes.length < 1
           }
           onClick={handleCatchPlane}
         >
@@ -259,7 +294,7 @@ function App() {
           variant="contained"
           disableElevation
           endIcon={<Telegram />}
-          disabled={currentPlane !== null || creatingNewPlane}
+          disabled={caughtPlane !== null || creatingNewPlane}
           onClick={handleCreateNewPlane}
         >
           Send Plane
@@ -267,7 +302,7 @@ function App() {
       </Box>
       <EditSendDialog
         user={user}
-        currentPlane={currentPlane}
+        caughtPlane={caughtPlane}
         creatingNewPlane={creatingNewPlane}
         userCenter={userCenter}
         handleCancelPlane={handleCancelPlane}

@@ -18,7 +18,7 @@ import { Launch, Plane } from './types'
 
 export const EditSendDialog = ({
   user,
-  currentPlane,
+  caughtPlane,
   creatingNewPlane,
   userCenter,
   handleCancelPlane,
@@ -62,16 +62,16 @@ export const EditSendDialog = ({
           variant: stampVariant,
         },
       }
-      if (currentPlane) {
+      if (caughtPlane) {
         fetch(BASE_URL, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ id: currentPlane.id, ...launch }),
+          body: JSON.stringify({ id: caughtPlane.id, ...launch }),
         })
           .then(() => {
             handleAddPlane({
-              ...currentPlane,
-              launches: [...currentPlane.launches, launch],
+              ...caughtPlane,
+              launches: [...caughtPlane.launches, launch],
             })
             setSendInProgress(false)
           })
@@ -96,7 +96,7 @@ export const EditSendDialog = ({
     }
   }
 
-  const active = currentPlane !== null || creatingNewPlane
+  const active = caughtPlane !== null || creatingNewPlane
   // useEffect to reset the dialog whenever changes to active
   useEffect(() => {
     if (active) {
@@ -143,7 +143,7 @@ export const EditSendDialog = ({
               viewBox="0 0 850 1100"
               style={{ border: '2px solid lightgray', maxWidth: '100%' }}
             >
-              {currentPlane?.launches.map((launch, i) => (
+              {caughtPlane?.launches.map((launch, i) => (
                 <Stamp
                   key={i}
                   x={launch.stamp.x}
@@ -221,7 +221,7 @@ export const EditSendDialog = ({
 
 type EditSendDialogProps = {
   user: CognitoUser | null
-  currentPlane: Plane | null
+  caughtPlane: Plane | null
   creatingNewPlane: boolean
   userCenter: Feature<Point> | null
   handleCancelPlane: () => void
