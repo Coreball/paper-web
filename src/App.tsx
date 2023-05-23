@@ -266,6 +266,7 @@ function App() {
         </Button>
       </Box>
       <EditSendDialog
+        user={user}
         currentPlane={currentPlane}
         creatingNewPlane={creatingNewPlane}
         userCenter={userCenter}

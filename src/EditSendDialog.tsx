@@ -11,12 +11,13 @@ import {
 } from '@mui/material'
 import { Send } from '@mui/icons-material'
 import { Feature, Point } from '@turf/turf'
+import { CognitoUser } from 'amazon-cognito-identity-js'
 import { Stamp } from './Stamp'
 import { BASE_URL, MAPBOX_TOKEN } from './constants'
 import { Launch, Plane } from './types'
-import { Auth } from 'aws-amplify'
 
 export const EditSendDialog = ({
+  user,
   currentPlane,
   creatingNewPlane,
   userCenter,
@@ -49,6 +50,7 @@ export const EditSendDialog = ({
     if (canSendPlane) {
       setSendInProgress(true)
       const launch: Launch = {
+        user: user?.getUsername() ?? null,
         origin: userCenter.geometry.coordinates,
         heading: sendHeading,
         timestamp: Date.now(),
@@ -61,46 +63,35 @@ export const EditSendDialog = ({
         },
       }
       if (currentPlane) {
-        Auth.currentSession().then((session) =>
-          fetch(BASE_URL, {
-            method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + session.getIdToken().getJwtToken(),
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify({ id: currentPlane.id, ...launch }),
-          })
-            .then(() => {
-              handleAddPlane({
-                ...currentPlane,
-                launches: [...currentPlane.launches, launch],
-              })
-              setSendInProgress(false)
+        fetch(BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id: currentPlane.id, ...launch }),
+        })
+          .then(() => {
+            handleAddPlane({
+              ...currentPlane,
+              launches: [...currentPlane.launches, launch],
             })
-            .catch((err) => console.error(err))
-        )
+            setSendInProgress(false)
+          })
+          .catch((err) => console.error(err))
       } else {
-        Auth.currentSession().then((session) =>
-          fetch(BASE_URL, {
-            method: 'POST',
-            headers: {
-              Authorization: 'Bearer ' + session.getIdToken().getJwtToken(),
-              'Content-Type': 'application/json',
-            },
-            credentials: 'include',
-            body: JSON.stringify(launch),
-          })
-            .then((res) => res.json())
-            .then((data) => {
-              handleAddPlane({
-                id: data.id,
-                launches: [launch],
-              })
-              setSendInProgress(false)
+        fetch(BASE_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(launch),
+        })
+          .then((res) => res.json())
+          .then((data) => {
+            handleAddPlane({
+              id: data.id,
+              owner: user?.getUsername() ?? null,
+              launches: [launch],
             })
-            .catch((err) => console.error(err))
-        )
+            setSendInProgress(false)
+          })
+          .catch((err) => console.error(err))
       }
     }
   }
@@ -229,6 +220,7 @@ export const EditSendDialog = ({
 }
 
 type EditSendDialogProps = {
+  user: CognitoUser | null
   currentPlane: Plane | null
   creatingNewPlane: boolean
   userCenter: Feature<Point> | null
